@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShopEasy Support Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #17171d;
+    --surface2: #1e1e27;
+    --border: #2a2a38;
+    --accent: #6c63ff;
+    --accent2: #ff6b9d;
+    --accent-glow: rgba(108,99,255,0.18);
+    --text: #e8e8f0;
+    --text-dim: #8888aa;
+    --bot-bubble: #1e1e2e;
+    --user-bubble: linear-gradient(135deg, #6c63ff, #8b5cf6);
+    --escalate: #ff6b6b;
+    --success: #4ade80;
+    --font-body: 'DM Sans', sans-serif;
+    --font-display: 'DM Serif Display', serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* Animated background mesh */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(108,99,255,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 90%, rgba(255,107,157,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 40% at 60% 30%, rgba(139,92,246,0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app-wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 860px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    animation: slideDown 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .header-icon {
+    width: 48px; height: 48px;
+    background: var(--user-bubble);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 20px rgba(108,99,255,0.4);
+  }
+
+  .header-title {
+    font-family: var(--font-display);
+    font-size: 1.45rem;
+    color: var(--text);
+    line-height: 1.1;
+  }
+
+  .header-sub {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+    margin-left: auto;
+    box-shadow: 0 0 8px var(--success);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--success); }
+    50%       { opacity: 0.6; box-shadow: 0 0 3px var(--success); }
+  }
+
+  .status-label {
+    font-size: 0.75rem;
+    color: var(--success);
+    margin-left: 6px;
+  }
+
+  /* Chat area */
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scroll-behavior: smooth;
+  }
+
+  .chat-area::-webkit-scrollbar { width: 4px; }
+  .chat-area::-webkit-scrollbar-track { background: transparent; }
+  .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Message rows */
+  .msg-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    animation: fadeUp 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg-row.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .avatar.bot { background: var(--surface2); border: 1px solid var(--border); }
+  .avatar.user { background: var(--user-bubble); }
+
+  .bubble {
+    max-width: 72%;
+    padding: 14px 18px;
+    border-radius: 18px;
+    font-size: 0.92rem;
+    line-height: 1.65;
+  }
+
+  .bubble.bot {
+    background: var(--bot-bubble);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    color: var(--text);
+  }
+
+  .bubble.user {
+    background: var(--user-bubble);
+    border-bottom-right-radius: 4px;
+    color: #fff;
+  }
+
+  .bubble.escalated {
+    background: rgba(255,107,107,0.08);
+    border-color: rgba(255,107,107,0.3);
+  }
+
+  .bubble-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+
+  .badge.escalated { background: rgba(255,107,107,0.15); color: #ff8080; border: 1px solid rgba(255,107,107,0.3); }
+  .badge.confident { background: rgba(74,222,128,0.1); color: #4ade80; border: 1px solid rgba(74,222,128,0.25); }
+  .badge.kb        { background: var(--accent-glow); color: var(--accent); border: 1px solid rgba(108,99,255,0.3); }
+
+  /* Typing indicator */
+  .typing-row { display: flex; gap: 12px; align-items: flex-end; }
+  .typing-bubble {
+    background: var(--bot-bubble);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    padding: 16px 20px;
+    border-radius: 18px;
+    display: flex; gap: 5px; align-items: center;
+  }
+  .typing-bubble span {
+    width: 7px; height: 7px;
+    background: var(--text-dim);
+    border-radius: 50%;
+    animation: bounce 1.2s ease-in-out infinite;
+  }
+  .typing-bubble span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-bubble span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%,60%,100% { transform: translateY(0); opacity: 0.4; }
+    30%          { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* Quick suggestions */
+  .suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 4px;
+    animation: fadeUp 0.5s 0.2s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    opacity: 0;
+  }
+
+  .suggestion-btn {
+    padding: 7px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.2s;
+  }
+
+  .suggestion-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+    background: var(--accent-glow);
+    transform: translateY(-1px);
+  }
+
+  /* Input area */
+  .input-area {
+    display: flex;
+    gap: 10px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    animation: slideUp 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .input-area:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .input-field {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 0.92rem;
+    font-family: var(--font-body);
+    resize: none;
+    max-height: 120px;
+    line-height: 1.5;
+  }
+
+  .input-field::placeholder { color: var(--text-dim); }
+
+  .send-btn {
+    width: 42px; height: 42px;
+    background: var(--user-bubble);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 12px rgba(108,99,255,0.35);
+    align-self: flex-end;
+  }
+
+  .send-btn:hover { transform: scale(1.06); box-shadow: 0 6px 18px rgba(108,99,255,0.5); }
+  .send-btn:active { transform: scale(0.97); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .send-btn svg { width: 18px; height: 18px; fill: white; }
+
+  /* Welcome state */
+  .welcome {
+    text-align: center;
+    padding: 40px 20px;
+    animation: fadeUp 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  }
+  .welcome-icon { font-size: 48px; margin-bottom: 16px; }
+  .welcome h2 { font-family: var(--font-display); font-size: 1.6rem; margin-bottom: 8px; }
+  .welcome p { color: var(--text-dim); font-size: 0.88rem; line-height: 1.6; max-width: 320px; margin: 0 auto; }
+
+  /* Pipeline steps (visible while processing) */
+  .pipeline {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 4px;
+    font-size: 0.74rem;
+    color: var(--text-dim);
+    align-items: center;
+  }
+
+  .pipeline-step {
+    display: flex; align-items: center; gap: 4px;
+    padding: 2px 8px;
+    border-radius: 8px;
+    transition: all 0.3s;
+  }
+
+  .pipeline-step.active { background: var(--accent-glow); color: var(--accent); }
+  .pipeline-step.done   { color: var(--success); }
+
+  .step-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
+
+  .pipeline-arrow { color: var(--border); }
+
+  /* Confidence bar */
+  .conf-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .conf-bar {
+    height: 3px; width: 60px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .conf-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">🛍️</div>
+    <div>
+      <div class="header-title">ShopEasy Support</div>
+      <div class="header-sub">RAG Assistant · Powered by LangGraph + ChromaDB</div>
+    </div>
+    <div class="status-dot"></div>
+    <span class="status-label">Online</span>
+  </div>
+
+  <!-- Chat -->
+  <div class="chat-area" id="chatArea">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">💬</div>
+      <h2>How can I help you?</h2>
+      <p>Ask me anything about returns, shipping, payments, or your account. I'll find the answer from our knowledge base.</p>
+    </div>
+  </div>
+
+  <!-- Quick suggestions -->
+  <div class="suggestions" id="suggestions">
+    <button class="suggestion-btn" onclick="sendSuggestion(this)">📦 Return policy?</button>
+    <button class="suggestion-btn" onclick="sendSuggestion(this)">🚚 Shipping times?</button>
+    <button class="suggestion-btn" onclick="sendSuggestion(this)">💳 Payment methods?</button>
+    <button class="suggestion-btn" onclick="sendSuggestion(this)">🔑 Reset my password</button>
+    <button class="suggestion-btn" onclick="sendSuggestion(this)">🛡️ Product warranty?</button>
+  </div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <textarea
+      id="inputField"
+      class="input-field"
+      placeholder="Ask a question about your order, returns, shipping..."
+      rows="1"
+      onkeydown="handleKey(event)"
+      oninput="autoResize(this)"
+    ></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+
+</div>
+
+<script>
+  const chatArea = document.getElementById('chatArea');
+  const inputField = document.getElementById('inputField');
+  const sendBtn = document.getElementById('sendBtn');
+  let sessionId = 'web_' + Date.now();
+  let isLoading = false;
+  let pipelineInterval = null;
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  }
+
+  function sendSuggestion(btn) {
+    const text = btn.textContent.replace(/^[\p{Emoji}\s]+/u, '').trim();
+    inputField.value = text;
+    sendMessage();
+  }
+
+  function addMessage(text, type, meta = {}) {
+    // Hide welcome
+    const welcome = document.getElementById('welcome');
+    if (welcome) welcome.remove();
+
+    const row = document.createElement('div');
+    row.className = `msg-row ${type}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = `avatar ${type === 'user' ? 'user' : 'bot'}`;
+    avatar.textContent = type === 'user' ? '👤' : '🤖';
+
+    const bubble = document.createElement('div');
+    bubble.className = `bubble ${type}${meta.escalated ? ' escalated' : ''}`;
+    bubble.textContent = text;
+
+    // Meta badges
+    if (type === 'bot') {
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'bubble-meta';
+
+      if (meta.escalated) {
+        metaDiv.innerHTML += `<span class="badge escalated">🔴 Escalated to Human</span>`;
+      } else if (meta.confidence >= 0.7) {
+        metaDiv.innerHTML += `<span class="badge confident">✅ KB Answer</span>`;
+        // Confidence bar
+        metaDiv.innerHTML += `
+          <div class="conf-bar-wrap">
+            <div class="conf-bar">
+              <div class="conf-bar-fill" style="width:${Math.round(meta.confidence*100)}%;background:var(--success)"></div>
+            </div>
+            <span>${Math.round(meta.confidence*100)}% confidence</span>
+          </div>`;
+      } else {
+        metaDiv.innerHTML += `<span class="badge kb">🔵 Fallback</span>`;
+      }
+
+      bubble.appendChild(metaDiv);
+    }
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    chatArea.appendChild(row);
+    chatArea.scrollTop = chatArea.scrollHeight;
+    return row;
+  }
+
+  function showTyping() {
+    const steps = ['Intent Check', 'Retrieval', 'Grading', 'Generating'];
+    let current = 0;
+
+    const container = document.createElement('div');
+    container.id = 'typingContainer';
+
+    // Pipeline indicator
+    const pipeline = document.createElement('div');
+    pipeline.className = 'pipeline';
+    pipeline.id = 'pipeline';
+    pipeline.innerHTML = steps.map((s, i) =>
+      `<span class="pipeline-step" id="step${i}"><span class="step-dot"></span>${s}</span>
+       ${i < steps.length-1 ? '<span class="pipeline-arrow">›</span>' : ''}`
+    ).join('');
+
+    // Typing dots row
+    const row = document.createElement('div');
+    row.className = 'typing-row';
+    row.innerHTML = `
+      <div class="avatar bot">🤖</div>
+      <div class="typing-bubble"><span></span><span></span><span></span></div>`;
+
+    container.appendChild(pipeline);
+    container.appendChild(row);
+    chatArea.appendChild(container);
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    // Animate pipeline steps
+    function activateStep(i) {
+      document.querySelectorAll('.pipeline-step').forEach((el, idx) => {
+        el.className = 'pipeline-step' + (idx < i ? ' done' : idx === i ? ' active' : '');
+        if (idx < i) el.innerHTML = `<span class="step-dot"></span>✓ ${steps[idx]}`;
+      });
+    }
+    activateStep(0);
+    pipelineInterval = setInterval(() => {
+      current = Math.min(current + 1, steps.length - 1);
+      activateStep(current);
+    }, 900);
+  }
+
+  function hideTyping() {
+    clearInterval(pipelineInterval);
+    const el = document.getElementById('typingContainer');
+    if (el) el.remove();
+  }
+
+  async function sendMessage() {
+    const text = inputField.value.trim();
+    if (!text || isLoading) return;
+
+    isLoading = true;
+    sendBtn.disabled = true;
+    inputField.value = '';
+    inputField.style.height = 'auto';
+
+    // Hide suggestions after first message
+    const sug = document.getElementById('suggestions');
+    if (sug) { sug.style.display = 'none'; }
+
+    addMessage(text, 'user');
+    showTyping();
+
+    try {
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: text, session_id: sessionId })
+      });
+      const data = await res.json();
+      hideTyping();
+      addMessage(data.answer, 'bot', {
+        escalated: data.escalated,
+        confidence: data.confidence
+      });
+    } catch (err) {
+      hideTyping();
+      addMessage('⚠️ Could not connect to the server. Make sure api_server.py is running on port 8000.', 'bot', { escalated: false, confidence: 0 });
+    }
+
+    isLoading = false;
+    sendBtn.disabled = false;
+    inputField.focus();
+  }
+</script>
+</body>
+</html>

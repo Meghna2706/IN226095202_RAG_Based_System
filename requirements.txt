@@ -1,0 +1,26 @@
+# Core RAG stack
+langchain==0.2.16
+langchain-community==0.2.16
+langchain-core==0.2.38
+langchain-groq==0.1.9
+langchain-openai==0.1.23
+langchain-huggingface==0.0.3
+langchain-chroma==0.1.4
+langgraph==0.2.14
+ 
+# Vector DB
+chromadb==0.5.5
+ 
+# Embeddings
+sentence-transformers==3.0.1
+ 
+# PDF
+pypdf==4.3.1
+ 
+# API
+fastapi==0.112.2
+uvicorn==0.30.6
+ 
+# Utilities
+python-dotenv==1.0.1
+pydantic==2.8.2
